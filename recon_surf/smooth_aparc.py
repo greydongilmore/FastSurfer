@@ -234,7 +234,7 @@ def mode_filter(
         # print(str(rvals))
         mvals = mode(rvals)[0]
         # print(str(mvals))
-        if mvals.size != 0:
+        if mvals.size != 0 and isinstance(mvals,list):
             # print(str(row)+' '+str(ids[row])+' '+str(mvals[0]))
             labels_new[ids[row]] = mvals[0]
     if rempty > 0:
