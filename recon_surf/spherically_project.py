@@ -21,8 +21,12 @@ import numpy as np
 import math
 from lapy.diffGeo import tria_mean_curvature_flow
 from lapy.triaMesh import TriaMesh
-from lapy.read_geometry import read_geometry
 from lapy.solver import Solver
+
+try:
+    from lapy.read_geometry import read_geometry
+except:
+    from lapy._read_geometry import read_geometry
 
 HELPTEXT = """
 Script to compute ShapeDNA using linear FEM matrices. 

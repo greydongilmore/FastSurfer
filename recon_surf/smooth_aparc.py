@@ -22,9 +22,12 @@ import sys
 import numpy as np
 from numpy import typing as npt
 import nibabel.freesurfer.io as fs
-from lapy._read_geometry import read_geometry
 from scipy import sparse
 
+try:
+    from lapy.read_geometry import read_geometry
+except:
+    from lapy._read_geometry import read_geometry
 
 HELPTEXT = """
 Script to fill holes and smooth aparc labels. 
