@@ -27,8 +27,7 @@ docker run --gpus all -v /home/user/my_mri_data:/data \
                       --rm --user $(id -u):$(id -g) deepmi/fastsurfer:latest \
                       --fs_license /fs_license/license.txt \
                       --t1 /data/subjectX/t1-weighted.nii.gz \
-                      --sid subjectX --sd /output \
-                      --parallel
+                      --sid subjectX --sd /output
 ```
 
 #### Docker Flags
@@ -46,7 +45,6 @@ docker run --gpus all -v /home/user/my_mri_data:/data \
 * The `--t1` points to the t1-weighted MRI image to analyse (full path, with mounted name inside docker: /home/user/my_mri_data => /data)
 * The `--sid` is the subject ID name (output folder name)
 * The `--sd` points to the output directory (its mounted name inside docker: /home/user/my_fastsurfer_analysis => /output)
-* The `--parallel` activates processing left and right hemisphere in parallel
 
 Note, that the paths following `--fs_license`, `--t1`, and `--sd` are __inside__ the container, not global paths on your system, so they should point to the places where you mapped these paths above with the `-v` arguments. 
 
@@ -105,8 +103,7 @@ docker run --gpus all -v /home/user/my_mri_data:/data \
                       --rm --user $(id -u):$(id -g) my_fastsurfer:cuda \
                       --fs_license /fs_license/license.txt \
                       --t1 /data/subjectX/t1-weighted.nii.gz \
-                      --sid subjectX --sd /output \
-                      --parallel
+                      --sid subjectX --sd /output
 ```
 
 
@@ -128,8 +125,7 @@ docker run -v /home/user/my_mri_data:/data \
            --fs_license /fs_license/license.txt \
            --t1 /data/subjectX/t1-weighed.nii.gz \
            --device cpu \
-           --sid subjectX --sd /output \
-           --parallel
+           --sid subjectX --sd /output
 ```
 
 As you can see, only the tag of the image is changed from gpu to cpu and the standard docker is used (no --gpus defined). In addition, the `--device cpu` flag is passed to explicitly turn on CPU usage inside FastSurferCNN.

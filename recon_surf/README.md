@@ -56,8 +56,7 @@ Optional arguments
 * `--fsqsphere`: Use FreeSurfer default instead of novel spectral spherical projection for qsphere
 * `--fsaparc`: Use FS aparc segmentations in addition to DL prediction (slower in this case and usually the mapped ones 
   from the DL prediction are fine)
-* `--parallel`: Run both hemispheres in parallel
-* `--threads`: Set openMP and ITK threads to <int>
+* `--threads`: Set openMP and ITK threads to <int>, activates hemisphere parallelization if threads >= 2.
 
 Other
 -----
@@ -183,7 +182,7 @@ There are however some small differences to be aware of:
 1. the path to and the filename of the t1 image in the subject_list file is optional.
 2. you are not able to specify a custom, conformed t1 image via `--t1 <path>` (`run_fastsurfer.sh --seg_only` will always use `$subjects_dir/$subject_id/mri/orig.mgz`). 
 
-Invoke the following command (make sure you have enough resources to run the given number of subjects in parallel or drop the `--parallel_subjects` flag to run them in series!):
+Invoke the following command (make sure you have enough resources to run the given number of subjects in parallel or drop the `--parallel_surf max` flag to run them in series!):
 
 ```bash
 singularity exec --no-home \
@@ -194,7 +193,7 @@ singularity exec --no-home \
             /fastsurfer/brun_fastsurfer.sh \
             --surf_only \
             --subjects_list /lists/subjects_list.txt \
-            --parallel_subjects \
+            --parallel_surf max \
             --sd /output \
             --fs_license /fs_license/license.txt \
             --3T

@@ -63,6 +63,7 @@ run_seg_pipeline="1"
 run_biasfield="1"
 run_surf_pipeline="1"
 surf_flags=()
+legacy_parallel_hemi=0
 vox_size="min"
 run_asegdkt_module="1"
 run_cereb_module="1"
@@ -231,7 +232,7 @@ SURFACE PIPELINE:
 Resource Options:
   --device                Set device on which inference should be run ("cpu" for
                             CPU, "cuda" for Nvidia GPU, or pass specific device,
-                            e.g. cuda:1), default check GPU and then CPU
+                            e.g. cuda:1), default check GPU and then CPU.
   --viewagg_device <str>  Define where the view aggregation should be run on.
                             Can be "auto" or a device (see --device). By default,
                             the program checks if you have enough memory to run
@@ -241,11 +242,11 @@ Resource Options:
                             view agg is run on the cpu. Equivalently, if you
                             pass a different device, view agg will be run on that
                             device (no memory check will be done).
-  --parallel              Run both hemispheres in parallel
   --threads <int>         Set openMP and ITK threads to <int> or "max", also
   --threads_seg <int>       for definition of threads specific to segmentation
-  --threads_surf <int>      and surface reconstruction.
-  --batch <batch_size>    Batch size for inference. Default: 1
+  --threads_surf <int>      and surface reconstruction (parallel hemispheres if
+                            at number of threads for surfaces >=2, default: 1).
+  --batch <batch_size>    Batch size for inference (default: 1).
   --py <python_cmd>       Command for python, used in both pipelines.
                             Default: "$python"
                             (-s: do no search for packages in home directory)
@@ -256,12 +257,12 @@ Resource Options:
                             (see recon-surf.sh) is not sourced. Can be used for
                             testing dev versions.
   --fstess                Switch on mri_tesselate for surface creation (default:
-                            mri_mc)
+                            mri_mc).
   --fsqsphere             Use FreeSurfer iterative inflation for qsphere
-                            (default: spectral spherical projection)
+                            (default: spectral spherical projection).
   --fsaparc               Additionally create FS aparc segmentations and ribbon.
                             Skipped by default (--> DL prediction is used which
-                            is faster, and usually these mapped ones are fine)
+                            is faster, and usually these mapped ones are fine).
   --no_fs_T1              Do not generate T1.mgz (normalized nu.mgz included in
                             standard FreeSurfer output) and create brainmask.mgz
                             directly from norm.mgz instead. Saves 1:30 min.
@@ -481,7 +482,8 @@ case $key in
   ##############################################################
   --seg_only) run_surf_pipeline="0" ;;
   # several flag options that are *just* passed through to recon-surf.sh
-  --fstess|--fsqsphere|--fsaparc|--no_surfreg|--parallel|--ignore_fs_version) surf_flags+=("$key") ;;
+  --fstess|--fsqsphere|--fsaparc|--no_surfreg|--ignore_fs_version) surf_flags+=("$key") ;;
+  --parallel) legacy_parallel_hemi=1 ;;
   --no_fs_t1) surf_flags+=("--no_fs_T1") ;;
 
   # temporary segstats development flag
@@ -534,6 +536,19 @@ source "${reconsurfdir}/functions.sh"
 check_allow_root
 
 # CHECKS
+
+if [[ "$legacy_parallel_hemi" == 1 ]] ; then
+  echo "WARNING: The --parallel flag is obsolete and will be removed in FastSurfer 3."
+  echo "  Hemispheres are now automatically processed in parallel, if threads for surface "
+  echo "  reconstruction are more than 1 (defined via --threads 2 or --threads_surf 2)!"
+  echo "IMPORTANT NOTE: The threads behavior has also changed, --parallel used to define the"
+  echo "  number of threads per hemisphere, it now defines the number of threads in total!"
+  if [[ "$threads_surf" == 1 ]] ; then
+    threads_surf=2
+    echo "INFO: We have changed the requested number of threads from 1 to 2, to activate parallel"
+    echo "  hemisphere processing (as requested by --parallel for backwards compatibility)."
+  fi
+fi
 
 if [[ -z "${sd}" ]]
 then
@@ -1051,13 +1066,7 @@ fi
 
 if [[ "$run_surf_pipeline" == "1" ]]
 then
-  if [[ "$threads_surf" == "max" ]]; then
-    threads_surf="$(nproc)"
-  else
-    for flag in "${surf_flags[@]}" ; do
-      if [[ "$flag" == "--parallel" ]] ; then threads_surf=$((threads_surf / 2)); break ; fi
-    done
-  fi
+  if [[ "$threads_surf" == "max" ]]; then threads_surf="$(nproc)" ; fi
   if [[ "$threads_surf" == "0" ]]; then threads_surf=1 ; fi
   # ============= Running recon-surf (surfaces, thickness etc.) ===============
   # use recon-surf to create surface models based on the FastSurferCNN segmentation.

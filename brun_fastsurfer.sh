@@ -43,7 +43,7 @@ OR
 brun_fastsurfer.sh [other options]
 
 Other options:
-brun_fastsurfer.sh [...] [--batch "<i>/<n>"] [--parallel_subjects [surf=][<N>]]
+brun_fastsurfer.sh [...] [--batch "<i>/<n>"] [--parallel <N>|max] [--parallel_seg <N>|max] [--parallel_surf <N>|max]
     [--run_fastsurfer <script to run fastsurfer>] [--statusfile <filename>] [--debug] [--help]
     [<additional run_fastsurfer.sh options>]
 
@@ -67,15 +67,15 @@ iii. a list of subjects directly passed (this does not support subject-specific 
   Note, brun_fastsurfer.sh will also automatically detect being run in a SLURM JOBARRAY and split
   according to \$SLURM_ARRAY_TASK_ID and \$SLURM_ARRAY_TASK_COUNT (unless values are specifically
   assigned with the --batch argument).
---parallel_subjects <n>|max: parallel execution of run_fastsurfer for <n> images. Creates <n>
-  processes with each process performing segmentation and surface reconstruction. The default
-  is this serial execution mode with n=1: '--parallel_subjects 1'.
---parallel_subjects_seg <n>|max and
---parallel_subjects_surf <m>|max: activate independent segmentation and surface reconstruction
-  pipelines. Segmentation and Surface reconstruction have independent processing queues. After
-  successful segmentation (<n> parallel processes), cases are transferred into the surface queue
-  (<m> parallel processes). Together max. m+n processes will run.
-  Logfiles unchanged, console output for individual subjects is interleaved with subject_id prepended.
+--parallel <n>|max: parallel execution of run_fastsurfer for <n> images. Creates <n> processes with
+  each process performing segmentation and surface reconstruction. The default is this serial execution
+  mode with n=1: '--parallel 1'.
+--parallel_seg <n>|max and
+--parallel_surf <m>|max: activate independent segmentation and surface reconstruction pipelines.
+  Segmentation and Surface reconstruction have independent processing queues. After successful
+  segmentation (<n> parallel processes), cases are transferred into the surface queue (<m> parallel
+  processes). Together max. m+n processes will run. Logfiles unchanged, console output for individual
+  subjects is interleaved with subject_id prepended.
 --run_fastsurfer <path/command>: This option enables the startup of fastsurfer in a more controlled
   manner, for example to delegate the fastsurfer run to container:
   --run_fastsurfer "singularity exec --nv --no-mount home,cwd -e -B <dir>:/data /fastsurfer/run_fastsurfer.sh"
@@ -107,7 +107,8 @@ then
   exit
 fi
 
-function verify_parallel() {
+function verify_parallel()
+{
   # 1: flag, 2: value
   value="$(echo "$2" | tr '[:upper:]' '[:lower:]')"
   if [[ "$value" =~ ^(max|-[0-9]+|0)$ ]] ; then verify_value=max
@@ -117,7 +118,11 @@ function verify_parallel() {
   export verify_value
 }
 
-function warn_old() { echo "WARNING: The syntax to --parallel_subjects is outdated and will be removed in FastSurfer 3!" ; }
+function warn_old()
+{
+  echo "WARNING: The syntax to ${key-'--parallel_subjects'} seg=/surf= is outdated and will be removed in FastSurfer 3,"
+  echo "  use --parallel <n>, --parallel_seg <n>, or --parallel_surf <n>!"
+}
 
 # PARSE Command line
 inputargs=("$@")
@@ -125,6 +130,7 @@ POSITIONAL=()
 res_device="auto"
 res_viewagg_device="auto"
 SED_CLEANUP_SUBJECTS='s/\r$//;s/\s*\r\s*/\n/g;s/\s*$//;/^\s*$/d'
+prev_ifs="$IFS"
 i=0
 while [[ $# -gt 0 ]]
 do
@@ -151,10 +157,22 @@ case $key in
   # brun_fastsurfer-specific/custom options
   #===================================================
   --batch) task_count=$(echo "$1" | cut -f2 -d/) ;  task_id=$(echo "$1" | cut -f1 -d/) ; shift ;;
-  --run_fastsurfer) run_fastsurfer=($1) ; shift ;;
-  --parallel_subjects)
+  --run_fastsurfer) IFS=" " ; run_fastsurfer=($1) ; shift ;;
+  --parallel|--parallel_subjects)
+    # future syntax: --parallel n|max|n/m
+    # currently the former syntax --parallel_subjects seg=n|max, etc. is still supported but deprecated
+    if [[ "$key" == "--parallel_subjects" ]] ; then
+      echo "WARNING: The --parallel_subjects option is obsolete and replaced with --parallel <option>."
+    fi
     if [[ "$#" -lt 1 ]] || [[ "$1" =~ ^-- ]]
-    then parallel_pipelines="1" ; num_parallel_surf="max" ; num_parallel_seg="max" ; warn_old
+    then
+      if [[ "$key" == "--parallel_subjects" ]] ; then
+        parallel_pipelines="1" ; num_parallel_surf="max" ; num_parallel_seg="max" ; warn_old
+      else POSITIONAL_FASTSURFER+=("--parallel")
+        echo "WARNING: --parallel without any argument for hemisphere parallelization is superseded by --threads 2+"
+        echo "  and will be removed in FastSurfer 3."
+      # this is just the parallel option
+      fi
     else # has parameter
       value="$(echo "$1" | tr '[:upper:]' '[:lower:]')"
       if [[ "$value" =~ ^surf(=-[0-9]*|=max)?$ ]] ; then num_parallel_surf="max" ; parallel_pipelines="2" ; warn_old
@@ -165,14 +183,14 @@ case $key in
       elif [[ "$value" =~ ^[0-9]+$ ]] ; then parallel_pipelines=1 ; num_parallel_seg="$value"
       elif [[ "$value" =~ ^[0-9]+/[-9]+$ ]] ; then parallel_pipelines=2
         num_parallel_seg="$(echo "$value" | cut -d/ -f1)" ; num_parallel_surf="$(echo "$value" | cut -d/ -f2)"
-      else echo "Invalid option for --parallel_subjects: $1" ; exit 1
+      else echo "Invalid option for $key: $1" ; exit 1
       fi
       shift
     fi
     ;;
-  --parallel_subjects_seg)
+  --parallel_seg)
     parallel_pipelines=2 ; verify_parallel "$key" "$1" ; num_parallel_seg="$verify_value"; shift ;;
-  --parallel_subjects_surf)
+  --parallel_surf)
     parallel_pipelines=2 ; verify_parallel "$key" "$1" ; num_parallel_surf="$verify_value" ; shift ;;
   --statusfile) statusfile="$1" ; shift ;;
   --debug) debug="true" ;;
@@ -196,6 +214,7 @@ esac
 done
  # restore positional parameters
 if [[ "${#POSITIONAL[@]}" -gt 0 ]] ; then set -- "${POSITIONAL[@]}" ; fi
+IFS="$prev_ifs"
 
 source "$(dirname "$THIS_SCRIPT")/stools.sh"
 
@@ -234,7 +253,7 @@ if [[ "$num_parallel_seg" != 1 ]] &&  [[ "$res_device" =~ ^auto|cuda$ ]] && \
   [[ "$(ls /dev/nvidia[0-9] | wc -w)" -gt 1 ]] && [[ "${CUDA_VISIBLE_DEVICES/,/}" != "$CUDA_VISIBLE_DEVICES" ]]
 then
   echo "WARNING: --device '$res_device' only uses the first gpu for parallel processing in the segmentation pipeline"
-  echo "  (--parallel_subjects seg=2+)! Manually specify --device cuda:0 or --device:0-3 (to use multiple gpus)."
+  echo "  (--parallel_seg 2+)! Manually specify --device cuda:0 or --device:0-3 (to use multiple gpus)."
 fi
 if [[ -n "$res_device" ]] ; then get_device_list "$res_device" ; res_device="$device_value" ; fi
 if [[ -n "$res_viewagg_device" ]] ; then get_device_list "$res_viewagg_device" ; res_viewagg_device="$device_value" ; fi
@@ -565,8 +584,8 @@ function process_by_token()
         else
           echo "WARNING: All devices are in use, make sure you are trying to use more parallel seg processes than"
           echo "  you have devices passed in --device AND --viewagg_device., e.g. '--device cuda:0,1 --viewagg_device"
-          echo "  cpu --parallel_subjects seg=2' is fine, but '--device cuda:0,1 --parallel_subjects seg=3' or"
-          echo "  '--viewagg_device cuda:0,1 --parallel_subjects seg=3' will cause issues."
+          echo "  cpu --parallel_seg 2' is fine, but '--device cuda:0,1 --parallel_seg 3' or"
+          echo "  '--viewagg_device cuda:0,1 --parallel_seg 3' will cause issues."
           parallel_warn=1
         fi
         # wait for a device to become available
