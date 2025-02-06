@@ -173,23 +173,23 @@ As an example, imagine you have 19 FreeSurfer processed subjects labeled subject
 ```
 /home/user/FastSurfer/data
 ├── subject1
-├── subject2
-├── subject3
+├── subject2
+├── subject3
 …
 │
-├── subject19
-    ├── mri
-    │   ├── aparc.DKTatlas+aseg.mgz
-    │   ├── aseg.auto_noCCseg.mgz
-    │   ├── orig.mgz
-    │   ├── …
-    │   …
-    ├── scripts
-    ├── stats
-    ├── surf
-    ├── tmp
-    ├── touch
-    └── trash
+├── subject19
+    ├── mri
+    │   ├── aparc.DKTatlas+aseg.mgz
+    │   ├── aseg.auto_noCCseg.mgz
+    │   ├── orig.mgz
+    │   ├── …
+    │   …
+    ├── scripts
+    ├── stats
+    ├── surf
+    ├── tmp
+    ├── touch
+    └── trash
 ```
 
 Setting `--pattern` "*" will select all 19 subjects (subject1, ..., subject19).
