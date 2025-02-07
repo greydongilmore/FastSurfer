@@ -28,50 +28,6 @@ List them by running the following command:
 :cwd: /../recon_surf/
 ```
 
-Required arguments
-------------------
-* `--sd`: Output directory \$SUBJECTS_DIR (equivalent to FreeSurfer setup --> `$SUBJECTS_DIR/<sid>/mri`;
-  `$SUBJECTS_DIR/<sid>/surf` ... will be created).
-* `--sid`: Subject ID for directory inside \$SUBJECTS_DIR to be created ($SUBJECTS_DIR/sid/...)
-
-Optional arguments
-------------------
-* `--t1`: T1 full head input (not bias corrected). This must be conformed (dimensions: same along each axis, voxel size:
-  isotropic, LIA orientation, and data type UCHAR). Images can be conformed using FastSurferCNN's 
-  [conform.py](https://github.com/Deep-MI/FastSurfer/blob/stable/FastSurferCNN/data_loader/conform.py) script (usage 
-  example: `python3 FastSurferCNN/data_loader/conform.py -i <T1_input> -o <conformed_T1_output>`). If not passed we use 
-  the `orig.mgz` in the output subject mri directory if available. 
-* `--asegdkt_segfile`: Global path with filename of segmentation (where and under which name to find it, must already 
-  exist). This must be conformed (dimensions: same along each axis, voxel size: isotropic, and LIA orientation). 
-  FastSurferCNN's segmentations are conformed by default. Please ensure that segmentations produced otherwise are also 
-  conformed and equivalent in dimension and voxel size to the `--t1 <image>`. 
-  Default location: `$SUBJECTS_DIR/$sid/mri/aparc.DKTatlas+aseg.deep.mgz` 
-* `--3T`: for Talairach registration, use the 3T atlas instead of the 1.5T atlas (which is used if the flag is not 
-  provided). This gives better (more consistent with FreeSurfer) ICV estimates (eTIV) for 3T and better Talairach 
-  registration matrices, but has little impact on standard volume or surface stats.
-* `--fstess`: Use mri_tesselate instead of marching cube (default) for surface creation
-* `--fsqsphere`: Use FreeSurfer default instead of novel spectral spherical projection for qsphere
-* `--fsaparc`: Use FS aparc segmentations in addition to DL prediction (slower in this case and usually the mapped ones 
-  from the DL prediction are fine)
-* `--threads`: Set openMP and ITK threads to <int>, activates hemisphere parallelization if threads >= 2.
-
-Other
------
-* `--py`: Command for python, used in both pipelines. Default: python3.10
-* `--no_surfreg`: Skip surface registration with FreeSurfer (if only stats are needed)
-* `--fs_license`: Path to FreeSurfer license key file. 
-  [Register for free](https://surfer.nmr.mgh.harvard.edu/registration.html) to obtain it if you do not have FreeSurfer 
-  installed already
-
-More parameters details
------------------------
-
-The `--help` flag of `recon-surf.sh` also prints details to your specific version of `recon-surf.sh` to the console. 
-
-```{command-output} ./recon-surf.sh --help
-:cwd: /../recon_surf/
-```
-
 Examples
 ========
 
