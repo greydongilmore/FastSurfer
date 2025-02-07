@@ -169,7 +169,8 @@ case $key in
   --threads|--threads_seg) run_pred_flags+=("--threads" "$1") ; shift ;;
   --batch) run_pred_flags+=("--batch_size" "$1") ; shift ;;
   # these known arguments get ignored
-  --aseg_name|--conformed_name|--asegdkt_segfile|--brainmask_name|--seg_log|--qc_log) shift ;;
+  --aseg_name|--conformed_name|--asegdkt_segfile|--brainmask_name|--seg_log|--qc_log|--parallel|--threads_surf) shift ;;
+  --no_cereb|--no_hypothal|--no_biasfield) shift ;;
   --async_io) ;;
   --fs_license) export FS_LICENSE="$1" ; shift ;;
   --remove_suffix) echo "ERROR: The --remove_suffix option is not supported by long_prepare_template.sh" ; exit 1 ;;

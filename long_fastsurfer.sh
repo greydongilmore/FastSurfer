@@ -80,11 +80,18 @@ FLAGS:
   --tpids <tID1> >tID2> ..  IDs for future time points directories inside
                               \$SUBJECTS_DIR to be created later (during --long)
   --sd  <subjects_dir>      Output directory \$SUBJECTS_DIR (or pass via env var)
-  --parallel_long           (Highly Experimental) Parallelize the long script
   --py <python_cmd>         Command for python, used in both pipelines.
                               Default: "$python"
                               (-s: do no search for packages in home directory)
   -h --help                 Print Help
+
+Parallelization options:
+  All of the following options will activate parallel processing of the base and the longitudinal time-point images
+  where possible. Additionally, the number of different processes for segmentation and surface reconstructionis set.
+  --parallel <n>|max        See above, sets the size of the processing pool for segmentation and surface reconstruction
+  --parallel_seg <n>|max    See above, only sets the size of the processing pool for segmentation (default: 1)
+  --parallel_surf <n>|max   See above, only sets the size of the processing pool for surface reconstruction (default: 1)
+
 
 With the exception of --t1, --t2, --sid, --seg_only and --surf_only, all
 run_fastsurfer.sh options are supported, see 'run_fastsurfer.sh --help'.
@@ -159,7 +166,7 @@ case $key in
     done
     ;;
   --sd) sd="$1" ; export SUBJECTS_DIR="$1" ; shift  ;;
-  --parallel_long) parallel=1 ;;
+  --parallel|--parallel_seg|--parallel_surf) parallel=1 ; brun_flags+=("$key" "$1") ; shift ;;
   --py) python="$1" ; shift ;;
   -h|--help) usage ; exit ;;
   --remove_suffix) echo "ERROR: The --remove_suffix option is not supported by long_prepare_template.sh" ; exit 1 ;;
@@ -326,8 +333,6 @@ fi
 cmda=("$FASTSURFER_HOME/brun_fastsurfer.sh" --subjects "${time_points[@]}" --sd "$sd" --surf_only --long "$tid"
       "${brun_flags[@]}" "${POSITIONAL_FASTSURFER[@]}")
 if [[ "$parallel" == "1" ]] ; then
-  cmda+=("--parallel_subjects")
-
   # Append the base surface and longitudinal segmentation logs, exit if either failed
   what_failed=()
   log "======================================="
