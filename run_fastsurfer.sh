@@ -535,18 +535,29 @@ source "${reconsurfdir}/functions.sh"
 # Warning if run as root user
 check_allow_root
 
+# from now to the creation of the logfile, all messages are only written to the console and thus lost if the output is
+# lost. If the terminate the script (exit 1 or similar), this is fine and no log file is created. But if we continue,
+# we should temporarily save log messages and paste them to seg_log as well.
+# Create a temporary logfile now (really only a path right now) and tee messages into that file, so we can later append
+# it to the seg_log file.
+tmpLF=$(mktemp)
+
 # CHECKS
 
 if [[ "$legacy_parallel_hemi" == 1 ]] ; then
-  echo "WARNING: The --parallel flag is obsolete and will be removed in FastSurfer 3."
-  echo "  Hemispheres are now automatically processed in parallel, if threads for surface "
-  echo "  reconstruction are more than 1 (defined via --threads 2 or --threads_surf 2)!"
-  echo "IMPORTANT NOTE: The threads behavior has also changed, --threads used to define the"
-  echo "  number of threads per hemisphere, it now defines the number of threads in total!"
+  {
+    echo "WARNING: The --parallel flag is obsolete and will be removed in FastSurfer 3."
+    echo "  Hemispheres are now automatically processed in parallel, if threads for surface "
+    echo "  reconstruction are more than 1 (defined via --threads 2 or --threads_surf 2)!"
+    echo "IMPORTANT NOTE: The threads behavior has also changed, --threads used to define the"
+    echo "  number of threads per hemisphere, it now defines the number of threads in total!"
+  } | tee -a "$tmpLF"
   if [[ "$threads_surf" == 1 ]] ; then
     threads_surf=2
-    echo "INFO: We have changed the requested number of threads from 1 to 2, to activate parallel"
-    echo "  hemisphere processing (as requested by --parallel for backwards compatibility)."
+    {
+      echo "INFO: We have changed the requested number of threads from 1 to 2, to activate parallel"
+      echo "  hemisphere processing (as requested by --parallel for backwards compatibility)."
+    } | tee -a "$tmpLF"
   fi
 fi
 
@@ -557,7 +568,7 @@ then
 fi
 if [[ ! -d "${sd}" ]]
 then
-  echo "INFO: The subject directory did not exist, creating it now."
+  echo "INFO: The subject directory did not exist, creating it now." | tee -a "$tmpLF"
   if ! mkdir -p "$sd" ; then echo "ERROR: Subject directory creation failed" ; exit 1 ; fi
 fi
 if [[ "$(stat -c "%u:%g" "$sd")" == "0:0" ]] && [[ "$(id -u)" != "0" ]] && \
@@ -577,9 +588,11 @@ fi
 
 if [[ "${#warn_seg_only[@]}" -gt 0 ]] && [[ "$run_surf_pipeline" == "1" ]]
 then
-  echo "WARNING: Specifying '${warn_seg_only[*]}' only affects the segmentation "
-  echo "  pipeline and not the surface pipeline. It can therefore have unexpected consequences"
-  echo "  on surface processing."
+  {
+    echo "WARNING: Specifying '${warn_seg_only[*]}' only affects the segmentation "
+    echo "  pipeline and not the surface pipeline. It can therefore have unexpected consequences"
+    echo "  on surface processing."
+  } | tee -a "$tmpLF"
 fi
 
 # DEFAULT FILE NAMES
@@ -623,7 +636,7 @@ then
     exit 1
   elif (( $(echo "$vox_size < 0.7" | bc -l) ))
   then
-    echo "WARNING: support for voxel sizes smaller than 0.7mm iso. is experimental."
+    echo "WARNING: support for voxel sizes smaller than 0.7mm iso. is experimental." | tee -a "$tmpLF"
   fi
 elif [[ "$vox_size" != "min" ]]
 then
@@ -701,12 +714,12 @@ then
     msg="$msg, but no license was provided via --fs_license or the FS_LICENSE environment variable"
     if [[ "$DO_NOT_SEARCH_FS_LICENSE_IN_FREESURFER_HOME" != "true" ]] && [[ -n "$FREESURFER_HOME" ]]
     then
-      echo "WARNING: $msg. Checking common license files in \$FREESURFER_HOME."
+      echo "WARNING: $msg. Checking common license files in \$FREESURFER_HOME." | tee -a "$tmpLF"
       for filename in "license.dat" "license.txt" ".license"
       do
         if [[ -f "$FREESURFER_HOME/$filename" ]]
         then
-          echo "  Trying with '$FREESURFER_HOME/$filename', specify a license with --fs_license to overwrite."
+          echo "  Trying with '$FREESURFER_HOME/$filename', specify a license with --fs_license to overwrite." | tee -a "$tmpLF"
           export FS_LICENSE="$FREESURFER_HOME/$filename"
           break
         fi
@@ -736,7 +749,7 @@ if [[ "$base" == "1" ]]
 then
   check_is_template "$sd" "$subject"
   if [[ -n "$t1" ]] && [[ "$t1" != "from-base" ]]; then
-    echo "WARNING: --t1 was passed but will be overwritten with T1 from base template."
+    echo "WARNING: --t1 was passed but will be overwritten with T1 from base template." | tee -a "$tmpLF"
   fi
   # base can only be run with the template image from base-setup:
   t1="$sd/$subject/mri/orig.mgz"
@@ -755,7 +768,7 @@ then
     exit 1
   fi
   if [[ -n "$t1" ]] && [[ "$t1" != "from-base" ]] ; then
-    echo "WARNING: --t1 was passed but will be overwritten with T1 in base space."
+    echo "WARNING: --t1 was passed but will be overwritten with T1 in base space." | tee -a "$tmpLF"
   fi
   # this is the default longitudinal input from base directory:
   t1="$sd/$baseid/long-inputs/$subject/long_conform.nii.gz"
@@ -768,8 +781,6 @@ then
   echo "NOTE: If running in a container, make sure symlinks are valid!"
   exit 1
 fi
-
-if [[ "$threads_seg" == "max" ]] ; then threads_seg="$(nproc)" ; fi
 
 ########################################## START ########################################################
 mkdir -p "$(dirname "$seg_log")"
@@ -790,8 +801,12 @@ fi
   echo "Log file for FastSurfer pipeline, run_fastsurfer.sh and segmentation(s)"
 } | tee -a "$seg_log"
 
+### IF tmpLF exists, it has been created with a warning or similar, copy that warning to seg_log now
+if [[ -f "$tmpLF" ]] ; then cat "$tmpLF" >> "$seg_log" ; rm "$tmpLF" ; fi
+# from now on, we can and will log to LF directly
+
 ### IF THE SCRIPT GETS TERMINATED, ADD A MESSAGE
-trap "{ echo \"run_fastsurfer.sh terminated via signal at \$(date -R)!\" >> \"$seg_log\" ; }" SIGINT SIGTERM
+trap "{ echo \"run_fastsurfer.sh terminated via signal at \$(date -R)!\" | tee -a \"$seg_log\" ; }" SIGINT SIGTERM
 
 # create the build log, file with all version info in parallel
 # uses ${version_cache_args}, which is filled exactly if a build_cache file exists
