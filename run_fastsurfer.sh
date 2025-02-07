@@ -541,7 +541,7 @@ if [[ "$legacy_parallel_hemi" == 1 ]] ; then
   echo "WARNING: The --parallel flag is obsolete and will be removed in FastSurfer 3."
   echo "  Hemispheres are now automatically processed in parallel, if threads for surface "
   echo "  reconstruction are more than 1 (defined via --threads 2 or --threads_surf 2)!"
-  echo "IMPORTANT NOTE: The threads behavior has also changed, --parallel used to define the"
+  echo "IMPORTANT NOTE: The threads behavior has also changed, --threads used to define the"
   echo "  number of threads per hemisphere, it now defines the number of threads in total!"
   if [[ "$threads_surf" == 1 ]] ; then
     threads_surf=2
