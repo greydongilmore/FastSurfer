@@ -31,6 +31,8 @@ List them by running the following command:
 Examples
 ========
 
+Note that it is recommended to run the surface pipeline via `run_fastsurfer.sh --surf_only ...` rather than via `recon-surf.sh` directly. The only time you would do that is if you want to try out experimental flags that are not available via the `run_fastsurfer.sh` entry script (which is usually for developers only). The following examples show you, how you would achieve this. 
+
 Example 1: Surface module inside Docker
 ---------------------------------------
 
